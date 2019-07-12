@@ -7,12 +7,15 @@
 
 #define STACKSIZE (1024 * 1024)
 
+struct child_args {
+	char **argv;
+};
 
 static int childfunc(void *arg) {
 
-	char* argv[] = { "", NULL };
-
-	if (execv((char *)arg, argv) == -1) {
+	struct child_args *args = arg;
+	
+	if (execvp(args->argv[0], args->argv) == -1) {
 		printf("failure to launch %s", (char *)arg);
 		return EXIT_FAILURE;
 	}
@@ -21,18 +24,20 @@ static int childfunc(void *arg) {
 }
 
 
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
 
+	struct child_args args;
 	char *childstack;
 	int childflags;
 	pid_t pid;
-
 
 	if (argc < 2) {
 		printf("Not enough args\n"); 
 	}
 
-	childflags = CLONE_NEWUTS | SIGCHLD;
+	args.argv = &argv[1];
+
+	childflags = SIGCHLD;
 
 	childstack = malloc(STACKSIZE);
 	if (childstack == NULL) {
@@ -40,7 +45,7 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	pid = clone(childfunc, childstack + STACKSIZE, childflags, argv[1]);
+	pid = clone(childfunc, childstack + STACKSIZE, childflags, &args);
 
 	if (pid < 0) {
 		printf("failure to run child\n");
